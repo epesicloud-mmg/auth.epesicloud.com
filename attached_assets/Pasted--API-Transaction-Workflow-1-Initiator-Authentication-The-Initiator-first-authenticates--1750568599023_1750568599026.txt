@@ -1,0 +1,160 @@
+## API Transaction Workflow
+
+### 1. Initiator Authentication
+
+The Initiator first authenticates with the Controller to obtain an access token.
+
+**Endpoint**: `/oauth/token`
+
+**Method**: POST
+**Headers**:
+
+- Content-Type: application/json
+
+**Request Payload**:
+
+```
+{
+  "grant_type": "client_credentials",
+  "client_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "client_secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "scope":"initiate_transaction"
+}
+
+```
+
+**Response**:
+
+```json
+{
+  "access_token": "<access_token>",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+
+```
+
+### 2. Transaction Initiation
+
+If authentication is successful, the Initiator calls the transaction/initiate endpoint to get a transaction token.
+
+**Endpoint**: `/transaction/initiate`
+
+**Method**: POST
+**Headers**:
+
+- Content-Type: application/json
+- Authorization: Bearer <access_token>
+
+**Request Payload**:
+
+```json
+{"client_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}
+```
+
+**Response**:
+
+```json
+{
+  "transaction_token": "<transaction_token>"
+}
+
+```
+
+### 3. Initiator-Executor Communication
+
+The Initiator uses the transaction token to directly call an endpoint on the Executor's side, passing the transaction data and the transaction token.
+
+**Endpoint**: `<executor_endpoint>`
+
+**Method**: POST
+**Headers**:
+
+- Content-Type: application/json
+
+**Request Payload**:
+
+```json
+{
+  "transaction_token": "<transaction_token>",
+  "transaction_data": "<Transaction Data>"
+}
+
+```
+
+### 4. Executor Processing
+
+The Executor performs the following steps upon receiving the request:
+
+a. **Authentication**:
+The Executor authenticates with the Controller to get an access token.
+
+**Endpoint**: `/oauth/token`
+
+**Method**: POST
+**Headers**:
+
+- Content-Type: application/json
+
+**Request Payload**:
+
+```
+{
+  "grant_type": "client_credentials",
+  "client_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "client_secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "scope":"execute_transaction"
+}
+
+```
+
+**Response**:
+
+```json
+{
+  "access_token": "<access_token>",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+
+```
+
+b. **Transaction Token Validation**:
+The Executor validates the transaction token with the Controller.
+
+**Endpoint**: `/transaction/validate`
+
+**Method**: POST
+**Headers**:
+
+- Content-Type: application/json
+- Authorization: Bearer <access_token>
+
+**Request Payload**:
+
+```json
+{
+  "transaction_token": "<transaction_token>"
+}
+
+```
+
+**Response**:
+
+```json
+{
+  "valid": true,
+  "transaction_token": "<transaction_token>",
+  "client_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
+
+```
+
+c. **Transaction Execution**:
+If the token is valid, the Executor commits the transaction on their end.
+
+### 5. Executor Response
+
+The Executor responds back to the Initiator with the transaction result.
+
+**Response to Initiator**:

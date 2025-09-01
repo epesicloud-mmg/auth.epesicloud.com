@@ -1,0 +1,225 @@
+# Documentation
+
+# AuthVault Transaction Flow Documentation
+
+Document Version: 2.0.0
+
+### **Table of Contents**
+
+1. An overview of the system and key stakeholders
+2. Process Sequence Diagram.
+3. A detailed description of the simplified transaction workflow
+4. API endpoints and payloads for each step of the process
+5. Important notes on implementation
+
+## Overview
+
+AuthVault facilitates secure and seamless digital transaction workflows, ensuring the confidentiality, integrity, and authentication of data exchanges. This document outlines the simplified transaction process involving three key stakeholders: Initiator, Controller, and Executor.
+
+## Key Stakeholders
+
+1. **Initiator**:
+    - The user or system initiating a transaction.
+    - Responsible for authentication and initiating transaction requests.
+2. **Controller**:
+    - Manages the OAuth 2.0 Server and oversees the transaction workflow.
+    - Responsible for authentication, transaction token generation, and overall process control.
+3. **Executor**:
+    - Responsible for validating transaction tokens and executing transactions.
+    - Communicates the transaction results back to the Initiator.
+
+## **Process Sequence Flow**
+
+A sequence diagram that visually represents the simplified transaction flow. 
+
+![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/e8978523-c2ea-48ca-89fc-4836b09f3bb9/bb4f3839-f14e-4765-8105-af76bb20fba0/image.png)
+
+**Explanation of the diagram:**
+
+1. The diagram shows the interaction between three participants: Initiator, Controller, and Executor.
+2. The process flow is represented from top to bottom, with each arrow indicating a communication step.
+3. The diagram clearly shows the five main steps of the process:
+    1. Initiator authentication
+    2. Transaction initiation
+    3. Sending transaction data to Executor
+    4. Executor processing (including authentication, token validation, and transaction execution)
+    5. Executor response to Initiator
+
+## API Transaction Workflow
+
+### 1. Initiator Authentication
+
+The Initiator first authenticates with the Controller to obtain an access token.
+
+**Endpoint**: `/oauth/token`
+
+**Method**: POST
+**Headers**:
+
+- Content-Type: application/json
+
+**Request Payload**:
+
+```
+{
+  "grant_type": "client_credentials",
+  "client_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "client_secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "scope":"initiate_transaction"
+}
+
+```
+
+**Response**:
+
+```json
+{
+  "access_token": "<access_token>",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+
+```
+
+### 2. Transaction Initiation
+
+If authentication is successful, the Initiator calls the transaction/initiate endpoint to get a transaction token.
+
+**Endpoint**: `/transaction/initiate`
+
+**Method**: POST
+**Headers**:
+
+- Content-Type: application/json
+- Authorization: Bearer <access_token>
+
+**Request Payload**:
+
+```json
+{"client_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}
+```
+
+**Response**:
+
+```json
+{
+  "transaction_token": "<transaction_token>"
+}
+
+```
+
+### 3. Initiator-Executor Communication
+
+The Initiator uses the transaction token to directly call an endpoint on the Executor's side, passing the transaction data and the transaction token.
+
+**Endpoint**: `<executor_endpoint>`
+
+**Method**: POST
+**Headers**:
+
+- Content-Type: application/json
+
+**Request Payload**:
+
+```json
+{
+  "transaction_token": "<transaction_token>",
+  "transaction_data": "<Transaction Data>"
+}
+
+```
+
+### 4. Executor Processing
+
+The Executor performs the following steps upon receiving the request:
+
+a. **Authentication**:
+The Executor authenticates with the Controller to get an access token.
+
+**Endpoint**: `/oauth/token`
+
+**Method**: POST
+**Headers**:
+
+- Content-Type: application/json
+
+**Request Payload**:
+
+```
+{
+  "grant_type": "client_credentials",
+  "client_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "client_secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "scope":"execute_transaction"
+}
+
+```
+
+**Response**:
+
+```json
+{
+  "access_token": "<access_token>",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+
+```
+
+b. **Transaction Token Validation**:
+The Executor validates the transaction token with the Controller.
+
+**Endpoint**: `/transaction/validate`
+
+**Method**: POST
+**Headers**:
+
+- Content-Type: application/json
+- Authorization: Bearer <access_token>
+
+**Request Payload**:
+
+```json
+{
+  "transaction_token": "<transaction_token>"
+}
+
+```
+
+**Response**:
+
+```json
+{
+  "valid": true,
+  "transaction_token": "<transaction_token>",
+  "client_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
+
+```
+
+c. **Transaction Execution**:
+If the token is valid, the Executor commits the transaction on their end.
+
+### 5. Executor Response
+
+The Executor responds back to the Initiator with the transaction result.
+
+**Response to Initiator**:
+
+```json
+{
+  "status": "success",
+  "message": "Transaction processed successfully",
+  "transaction_id": "<executor_transaction_id>",
+  "transaction_token": "<transaction_token>"
+}
+
+```
+
+## Important Notes
+
+1. All communication is done over HTTPS to ensure security.
+2. The Controller endpoints have rate limiting and other security measures to prevent abuse.
+3. The transaction token has a short expiry time to minimize the risk of token misuse.
+4. Transaction token can only be validated once. Once validated it is rendered invalid for any other validation attempts.
+5. The Controller manages the clients and assigns the relevant scopes to the clients ensuring that the respective clients can only call endpoints relevant to them.
